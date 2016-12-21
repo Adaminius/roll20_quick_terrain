@@ -100,11 +100,12 @@ def distance(point0, point1):
 
 
 class UndirectedGraph(object):
-            """Undirected graph data structure, mostly a copy of a great SO answer here:
+            """Undirected graph data structure. 
+            Mostly a copy of a great StackOverflow answer by mVChr here:
             http://stackoverflow.com/questions/19472530/representing-graphs-data-structure-in-python
+            mVChr's profile:
+            http://stackoverflow.com/users/246616/mvchr
             """
-            
-            
             def __init__(self, connections):
                 self._graph = defaultdict(set)
                 

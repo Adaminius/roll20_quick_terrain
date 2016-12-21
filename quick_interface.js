@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 /******************** IMAGES ********************/
 var STONE_IMAGE = 'https://s3.amazonaws.com/files.d20.io/images/26401727/u-v0Ngg7BhDGv0GS5zvuPw/thumb.png?1482011449';
 var PINE_IMAGE = 'https://s3.amazonaws.com/files.d20.io/images/26401729/j4FpvNNVnv3aJ4Ky3DdZ1A/thumb.png?1482011451';
+var WATER_IMAGE = 'https://s3.amazonaws.com/files.d20.io/images/26537136/eC-9m_1wP5f_DZOLAuj52w/thumb.png?1482339672';
 
 /******************** GLOBALS *******************/
 var GRID_SIZE = 70; //in pixels
@@ -55,8 +56,9 @@ var processMapTokenMessage = function(msg){
     
     log(params)
     
-    if(image == 'STONE_IMAGE'){image = STONE_IMAGE;log(image == STONE_IMAGE)}
+    if(image == 'STONE_IMAGE'){image = STONE_IMAGE}
     if(image == 'PINE_IMAGE'){image = PINE_IMAGE}
+    if(image == 'WATER_IMAGE'){image = WATER_IMAGE}
     
     createMapToken(gridX, gridY, sizeMul, image);
 }
