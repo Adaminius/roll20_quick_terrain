@@ -1,9 +1,10 @@
 """
-Generate random outdoor maps for roll20. Requires map_generate.js to be running in your roll20 dev
+Generate random outdoor maps for roll20. Requires quick_interface.js to be running in your roll20 dev
 game and the following images to be in your library and correctly addressed in map_generate.js:
 
 PINE_IMAGE
 STONE_IMAGE
+WATER_IMAGE
 """
 
 __author__ = 'Adam Mansfield'
@@ -26,9 +27,9 @@ from collections import defaultdict
 #################################
 
 
-# todo: more sophisticated terrain generation alg
-#   - connected regions labeling algorithm
-#   - make maxobjects actually do something
+# todo: more sophisticated terrain generation alg X
+#   - connected regions labeling algorithm X
+#   - make maxobjects actually do something X
 # todo: add more terrain images/types
 # todo: add support for drawing rivers and ponds
 # todo: add a listbox? of presets
@@ -47,9 +48,16 @@ COLORS_LIST = ["sky blue", "green yellow", "coral", "DarkOliveGreen2", "gray60",
 MAX_TERRAIN_WIDGET_WIDTH = 6  # number of terrain widgets to be displayed horizontally before starting a new row
 LABEL_FONT = ("Calibri", 10, "bold")
 PREVIEW_SIZE = 8
+
+
+# Terrain draw types
+DT_SCATTER = 'scatter'  # TerrainTypes with this draw type are drawn randomly all over the map first, then cleaned up to make sure all empty places are connected. e.g. trees, rocks
+DT_LINES = 'lines'  # TerrainTypes with this draw type are drawn last and form contiguous lines stretching between two map edges. e.g. rivers, walls
+
    
 default_settings = {    'map_width':    25,
                         'map_height':   25,
+                        'debug':    True,
                    }
 settings = deepcopy(default_settings)
    
@@ -75,8 +83,66 @@ def distance(point0, point1):
 #################################
 
 
+class UndirectedGraph(object):
+            """Undirected graph data structure, mostly a copy of a great SO answer here:
+            http://stackoverflow.com/questions/19472530/representing-graphs-data-structure-in-python
+            """
+            
+            
+            def __init__(self, connections):
+                self._graph = defaultdict(set)
+                
+                
+            def add_connections(self, connections):
+                """Add connections (list of tuple pairs) to the graph."""
+                for node1, node2 in connections:
+                    self.add(node1, node2)
+                    
+                    
+            def add(self, node1, node2):
+                """Add a connection between node1 and node2."""
+                self._graph[node1].add(node2)
+                self._graph[node2].add(node1)
+                
+                
+            def remove(self, node):
+                """Remove all references to node."""
+                for n, cxns in self._graph.iteritems():
+                    try:
+                        cxns.remove(node)
+                    except KeyError:
+                        pass
+                
+                try:
+                    del self._graph[node]
+                except KeyError:
+                    pass
+                    
+                    
+            def is_connected(self, node1, node):
+                """Is node1 directly connected to node2"""
+                return node1 in self._graph and node2 in self._graph[node1]
+                
+                
+            def find_path(self, node1, node2, path=[]):
+                """Find ANY path between node1 and node2 (may not be shortest)"""
+                path = path + [node1]
+                if node1 == node2:
+                    return path
+                    
+                if node1 not in self._graph:
+                    return None
+                    
+                for node in self._graph[node1]:
+                    if node not in path:
+                        new_path = self.find_path(node, node2, path)
+                        if new_path:
+                            return new_path
+                return None
+
+
 class TerrainType(object):
-    def __init__(self, image, min_size=0, max_size=0, max_objects=None, name=None, color=None, liquid=False):
+    def __init__(self, image, min_size=0, max_size=0, max_objects=None, name=None, color=None, draw_type=DT_SCATTER):
         self.image = image  # e.g. 'STONE_IMAGE' or 'PINE_IMAGE'
         # self._min_size = min_size
         # self._max_size = max_size        
@@ -85,11 +151,11 @@ class TerrainType(object):
         self.max_objects = max_objects
         self.name = name if name is not None else random.choice(ADJECTIVES_LIST) + " " + random.choice(ANIMALS_LIST)
         self.color = color if color is not None else random.choice(COLORS_LIST)
-        self.liquid = liquid
+        self.draw_type = draw_type
        
 
     # don't actually want to do this -- don't want to arbitrarily decide the order in which min_size and max_size are
-    #   checked
+    #   checked, so we just check the sliders when updating them to make sure values are valid rather than in this class
     #
     # @property
     # def min_size(self):
@@ -204,6 +270,7 @@ class BattleMap(object):
             self._terrain_objects.remove(terrain_object)
             self.redraw()
             return terrain_object
+            
         return None
     
 
@@ -215,13 +282,28 @@ class BattleMap(object):
             empty_terrain_types:    An iterable of TerrainTypes which are treated as 'empty', e.g. "shallow water", 
                                         "brick floor". Coordinates in battle_map which contain 'None' are also empty.
                                         
-                                        todo: actually implement empty_terrain_types stuff
+                                        todo: actually test empty_terrain_types stuff
         """
         empty_terrain_types = (None,) if empty_terrain_types is None else empty_terrain_types
 
         
         def get_labeled_map(self):
-            # Find regions -----------------------------------------------
+            """Construct a 2D list which labels the contiguous regions of empty space in the BattleMap.
+            
+            We first label all coordinates in the map which are occupied by a non-empty_terrain_type object as 0, and
+            all 'empty' areas as 1. We then use https://en.wikipedia.org/wiki/Connected-component_labeling#Two-pass i.e.
+            two-pass connected component labeling to find and all distinct regions of empty space (my implementation
+            is sub-par, will probably update it to use union-find).
+            
+            Returns:
+                list[list[int]]:    A 2D representation of the BattleMap in which 0 is a space occupied by non-empty
+                                        terrain, and spaces in empty regions are each given integer labels (starting 
+                                        from 2) to identify which other spaces in the region they are contiguous with.
+                                        E.g.:   033000000
+                                                000222200
+                                                500200004
+                                                000000444
+            """
             labeled_map = [[0 for y in range(self._height)] for x in range(self._width)]
 
             for x in range(self._width):
@@ -261,17 +343,16 @@ class BattleMap(object):
                         else:
                             labeled_map[x][y] = up
 
-                
-            for y in range(self._height):
-                outli = []
-                for x in range(self._width):
-                    outli.append(labeled_map[x][y])
-                print(' '.join(["%2s" % i for i in outli]))
-                
-            print()
-            for k,v in equivalences.items():
-                print(str(k) + "\t" + str(v))
-
+            if settings["debug"]:
+                for y in range(self._height):
+                    outli = []
+                    for x in range(self._width):
+                        outli.append(labeled_map[x][y])
+                    print(' '.join(["%2s" % i for i in outli]))
+                    
+                print()
+                for k,v in equivalences.items():
+                    print(str(k) + "\t" + str(v))
                             
                 # second pass - relabel equivalent regions, iterating through higher->lower, reducing labels along the way
                 #   I made this up, probably terribly inefficient compared to standard method. todo: look it up later
@@ -287,18 +368,22 @@ class BattleMap(object):
                             labeled_map[x][y] = max_label
                             
                 del equivalences[label]                       
+                   
+            if settings["debug"]:  
+                # This little preview will not always match up with the actual map, 
+                # we make all regions contiguous as the next step in ensure_playable().
+                for y in range(self._height):
+                    outli = []
+                    for x in range(self._width):
+                        outli.append(labeled_map[x][y])
+                    print(' '.join(["%2s" % i for i in outli]))
                     
-            for y in range(self._height):
-                outli = []
-                for x in range(self._width):
-                    outli.append(labeled_map[x][y])
-                print(' '.join(["%2s" % i for i in outli]))
-                
-            print()
-            for k,v in equivalences.items():
-                print(str(k) + "\t" + str(v))
+                print()
+                for k,v in equivalences.items():
+                    print(str(k) + "\t" + str(v))
                 
             return labeled_map
+        #   ---------------- End of get_labeled_map() -------------------------------- #
         
         regions_grid = get_labeled_map(self)
         
@@ -310,7 +395,12 @@ class BattleMap(object):
                 
                 
         # pick two regions A and B, remove them from the dictionary
-        non_empty_regions = regions_dict.pop(0)  # don't need this now, may want it for later stuff
+        try:
+            non_empty_regions = regions_dict.pop(0)  # don't need this now, may want it for later stuff
+        except KeyError:
+            print("Warning:\tNo 0 region.")
+            return None  # If there's no 0 region, that means the entire map is probably empty.
+            
         while len(regions_dict) > 1:
             label1, region1 = regions_dict.popitem()
             label2, region2 = regions_dict.popitem()
@@ -328,64 +418,47 @@ class BattleMap(object):
             stepx = 1 if point1[0] <= point2[0] else -1
             stepy = 1 if point1[1] <= point2[1] else -1
             
-            if random.randint(0,1) == 1:  # adds more variety if we don't always start the path the same way
+            if random.randint(0, 1) == 1:  # adds more variety if we don't always start the path the same direction
                 while point1[0] != point2[0]:  # todo: can add some more complex functionality like filling in deleted tiles with other empty tiles here, and use a less destructive algorithm that rechecks regions each time
                     self.delete(point1[0], point1[1])
-                    region1.append(point1)  # will make some duplicates on the first go; oh well. todo: fix
+                    region1.append(point1)  # this will make some duplicates on the first go; that's okay.
                     point1 = (point1[0] + stepx, point1[1])
                     
-                    print(point1)
-                    print(point2)
+                    if settings["debug"]:
+                        print(point1)
+                        print(point2)
+                
                 while point1[1] != point2[1]:
                     self.delete(point1[0], point1[1])
                     region1.append(point1)
                     point1 = (point1[0], point1[1] + stepy)
-                    
-                    print(point1)
-                    print(point2)
+
+                    if settings["debug"]:
+                        print(point1)
+                        print(point2)
+            
             else:
                 while point1[1] != point2[1]:
                     self.delete(point1[0], point1[1])
                     region1.append(point1)
                     point1 = (point1[0], point1[1] + stepy)
                     
-                    
-                    print(point1)
-                    print(point2)
+                    if settings["debug"]:
+                        print(point1)
+                        print(point2)
+                
                 while point1[0] != point2[0]:
                     self.delete(point1[0], point1[1])
                     region1.append(point1)
                     point1 = (point1[0] + stepx, point1[1])
                     
-                    print(point1)
-                    print(point2)
+                    if settings["debug"]:
+                        print(point1)
+                        print(point2)
 
-
-            # add the points of B to A and put them back
             regions_dict[label1] = region1 + region2
             
 
-        # for k,v in regions_dict.items():
-            # print(str(k) + "\t")
-            # for i in v:
-                # print(str(i))
-            # print("\n\n\n")
-        
-        # Create region graph ----------------------------------------
-        # If two blank regions are not connected, connect them -------
-        
-        # for x in range(self._width):
-            # for y in range(self._height):
-                # if self.get(x,y) not in empty_terrain_types:
-        
-        # for x in range(self._width):
-            # for y in range(self._height):
-                # if self.get(x,y) not in empty_terrain_types:
-                    # labeled_map[x][y] = 1
-        
-        
-        
-        
     def get_out_str(self):
         """Returns the string of commands to create this BattleMap in Roll20."""
         out_commands = ["!setup"]
@@ -430,7 +503,7 @@ class TerrainWindow(tk.Frame):
         
         max_objects_label = tk.Label(container, text="Max "  + terrain_type.name + " Objects", font=LABEL_FONT)
         max_objects_label.pack()
-        max_objects_scale = tk.Scale(container, from_=0, to=(settings["map_width"] * settings["map_height"] // 8), 
+        max_objects_scale = tk.Scale(container, from_=0, to=(settings["map_width"] * settings["map_height"] // 4), 
                                      resolution=1, orient=tk.HORIZONTAL)
         max_objects_scale.pack()
         
@@ -482,7 +555,7 @@ class TerrainWindow(tk.Frame):
         self.max_objects_frame = tk.Frame(self.buttons_frame)
         self.max_objects_label = tk.Label(self.max_objects_frame, text="Max Objects", font=LABEL_FONT)
         self.max_objects_scale = tk.Scale(self.max_objects_frame, from_=1, 
-                                          to=settings["map_width"] * settings["map_height"] // 1, resolution=1, 
+                                          to=settings["map_width"] * settings["map_height"] // 2, resolution=1, 
                                           orient=tk.HORIZONTAL)
         self.max_objects_label.pack(side="top")
         self.max_objects_scale.pack(side="top")
@@ -512,14 +585,23 @@ class TerrainWindow(tk.Frame):
         self.update_terrain_types()
     
         bmap = BattleMap(settings["map_width"], settings["map_height"])
+        
+        # ----  Place the 'scatter'-type terrain, e.g. trees, rocks.    ---- #
         type_count = defaultdict(int)  # track number of objects of each type
         for i in range(self.max_objects_scale.get()): 
+            end_generation = True
+            
             ttype = random.choice(self.terrain_types)
             
             for i in range(1000):  # try 1000 times, then give up trying to find a terrain that isn't maxed out
                 if type_count[ttype] < ttype.max_objects:
+                    end_generation = False
                     break
                 ttype = random.choice(self.terrain_types)
+            
+            if end_generation:  # couldn't find a TerrainType that hadn't already drawn up to its max_objects
+                break
+            
             type_count[ttype] += 1
                 
             size = random.randrange(ttype.min_size, ttype.max_size + 1, 1)
@@ -528,7 +610,10 @@ class TerrainWindow(tk.Frame):
             bmap.add(TerrainObject(ttype, locx, locy, size))
 
         bmap.ensure_playable()
+        
+        # ----  Place the 'lines'-type terrain, e.g. rivers, walls ---- #
             
+        # ---- Create a pretty preview of what the terrain will look like   ---- #
         self.preview_frame.delete(tk.ALL)
         self.preview_frame.create_rectangle((0, 0, self.preview_frame.winfo_width() - 1, self.preview_frame.winfo_height() - 1),
                                             fill="black")
@@ -541,7 +626,7 @@ class TerrainWindow(tk.Frame):
                          x * PREVIEW_SIZE + PREVIEW_SIZE + 2, y * PREVIEW_SIZE + PREVIEW_SIZE + 2
                 self.preview_frame.create_rectangle(coords, fill=color)
         
-        
+        # ----  Create and place the output commands needed to create the terrain in Roll20 ---- #
         self.outtxt.config(state=tk.NORMAL)
         self.outtxt.delete(1.0, tk.END)
         self.outtxt.insert(tk.END, bmap.get_out_str())
@@ -553,12 +638,12 @@ class TerrainWindow(tk.Frame):
 #       --- Execution ---       #
 #                               #
 #################################
-      # def __init__(self, image, min_size, max_size, max_objects=None, name=None):
 
   
 def main():
     pine_type = TerrainType("PINE_IMAGE", 1, 10, 10, "PINE", "green")
     stone_type = TerrainType("STONE_IMAGE", 1, 10, 10, "STONE", "gray60")
+    river_type = TerrainType("WATER_IMAGE", 1, 10, 10, "RIVER", "blue")
     
     # gui = GUI(master=root, terrain_types=[TerrainType("fff") for i in range(15)])
     root.wm_title("Random Terrain by Adam Mansfield! if(D && D) ∩༼˵☯‿☯˵༽つ¤=[]:::::>")
@@ -573,7 +658,7 @@ def main():
     # outtxt.pack()
     
     # terrain_window = TerrainWindow(master=root, outtxt=outtxt, terrain_types=[pine_type, stone_type] + [TerrainType(str(i)) for i in range(10)])
-    terrain_window = TerrainWindow(master=root, terrain_types=[pine_type, stone_type] + [TerrainType("PINE_IMAGE") for i in range(6)])
+    terrain_window = TerrainWindow(master=root, terrain_types=[pine_type, stone_type, river_type] + [TerrainType("PINE_IMAGE") for i in range(6)])
     
     root.mainloop()
     
@@ -590,5 +675,3 @@ if __name__ == '__main__':
 
 # !setup
 # !makeMapToken, gridX, gridY, sizeMul, image 
-# ...
-# currently only images are STONE_IMAGE and PINE_IMAGE
