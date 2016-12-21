@@ -51,16 +51,17 @@ var setup = function(){
     
 
     log('Setting up');
-    //log(getAllObjs());
     
-    var currentPageGraphics = findObjs({                              
+    var currentPageMapTokens = findObjs({                              
       _pageid: Campaign().get("playerpageid"),                              
-      _type: "graphic",                          
+      _type: "graphic",
+      layer: 'map',
     });
-    _.each(currentPageGraphics, function(obj) {
-        log(obj.get('name'));
-        log(obj.get('imgsrc'));
-      //Do something with obj, which is in the current page and is a graphic.
+    _.each(currentPageMapTokens, function(token) {
+        log(token.get('name'));
+        log(token.get('imgsrc'));
+        token.remove();
+        //can't delete tokens, so just move them. in future can use a pool of token IDs
     });
 }
 
