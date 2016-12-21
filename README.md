@@ -10,6 +10,8 @@ Simple GUI terrain generator appropriate for outdoor battle maps for tabletop ro
 
 **!setup will delete all tokens on the map layer of the page the players are currently on.**
 
+Checkout the screenshots ss1.png and ss2.png to see what stuff looks like.
+
 ### Setting up Roll20
 
 * Upload the included image files into your Roll20 image library.
