@@ -11,6 +11,7 @@ __author__ = 'Adam Mansfield'
 import tkinter as tk
 import random
 import time
+import math
 
 from copy import deepcopy
 from tkinter import messagebox
@@ -29,7 +30,9 @@ from collections import defaultdict
 #   - connected regions labeling algorithm
 #   - make maxobjects actually do something
 # todo: add more terrain images/types
+# todo: add support for drawing rivers and ponds
 # todo: add a listbox? of presets
+#   - will be in a 'settings' window that appears before the main window, allows you to specify terrain names and types ('scatter',=trees,rocks 'lines'=walls,rivers, water/rivers/oceans etc, and will have option to load a preset
 # todo: something for background texture/image
 # todo: add some way to get back current state of map from roll20 and generate around what's already there? (sounds like too much trouble for now)
 
@@ -38,7 +41,8 @@ ANIMALS_LIST = "Aardvark	Albatross	Alligator	Alpaca	Ant	Anteater	Antelope	Ape	Ar
 ANIMALS_LIST = [s.upper() for s in ANIMALS_LIST.split('\t')]
 ADJECTIVES_LIST = "abandoned	able	absolute	academic	acceptable	acclaimed	accomplished	accurate	aching	acidic	acrobatic	adorable	adventurous	babyish	back	bad	baggy	bare	barren	basic	beautiful	belated	beloved	calculating	calm	candid	canine	capital	carefree	careful	careless	caring	cautious	cavernous	celebrated	charming	damaged	damp	dangerous	dapper	daring	dark	darling	dazzling	dead	deadly	deafening	dear	dearest	each	eager	early	earnest	easy	easygoing	ecstatic	edible	educated	fabulous	failing	faint	fair	faithful	fake	familiar	famous	fancy	fantastic	far	faraway	farflung	faroff	gargantuan	gaseous	general	generous	gentle	genuine	giant	giddy	gigantic	hairy	half	handmade	handsome	handy	happy	happygolucky	hard	icky	icy	ideal	idealistic	identical	idiotic	idle	idolized	ignorant	ill	illegal	jaded	jagged	jampacked	kaleidoscopic	keen	lame	lanky	large	last	lasting	late	lavish	lawful	mad	madeup	magnificent	majestic	major	male	mammoth	married	marvelous	naive	narrow	nasty	natural	naughty	obedient	obese	oblong	oblong	obvious	occasional	oily	palatable	pale	paltry	parallel	parched	partial	passionate	past	pastel	peaceful	peppery	perfect	perfumed	quaint	qualified	radiant	ragged	rapid	rare	rash	raw	recent	reckless	rectangular	sad	safe	salty	same	sandy	sane	sarcastic	sardonic	satisfied	scaly	scarce	scared	scary	scented	scholarly	scientific	scornful	scratchy	scrawny	second	secondary	secondhand	secret	selfassured	selfish	selfreliant	sentimental	talkative	tall	tame	tan	tangible	tart	tasty	tattered	taut	tedious	teeming	ugly	ultimate	unacceptable	unaware	uncomfortable	uncommon	unconscious	understated	unequaled	vacant	vague	vain	valid	wan	warlike	warm	warmhearted	warped	wary	wasteful	watchful	waterlogged	watery	wavy	yawning	yearly	zany	false	active	actual	adept	admirable	admired	adolescent	adorable	adored	advanced	affectionate	afraid	aged	aggravating	beneficial	best	better	bewitched	big	bighearted	biodegradable	bitesized	bitter	black	cheap	cheerful	cheery	chief	chilly	chubby	circular	classic	clean	clear	clearcut	clever	close	closed	decent	decimal	decisive	deep	defenseless	defensive	defiant	deficient	definite	definitive	delayed	delectable	delicious	elaborate	elastic	elated	elderly	electric	elegant	elementary	elliptical	embarrassed	fast	fat	fatal	fatherly	favorable	favorite	fearful	fearless	feisty	feline	female	feminine	few	fickle	gifted	giving	glamorous	glaring	glass	gleaming	gleeful	glistening	glittering	hardtofind	harmful	harmless	harmonious	harsh	hasty	hateful	haunting	illfated	illinformed	illiterate	illustrious	imaginary	imaginative	immaculate	immaterial	immediate	immense	impassioned	jaunty	jealous	jittery	key	kind	lazy	leading	leafy	lean	left	legal	legitimate	light	masculine	massive	mature	meager	mealy	mean	measly	meaty	medical	mediocre	nautical	near	neat	necessary	needy	odd	oddball	offbeat	offensive	official	old	periodic	perky	personal	pertinent	pesky	pessimistic	petty	phony	physical	piercing	pink	pitiful	plain	quarrelsome	quarterly	ready	real	realistic	reasonable	red	reflecting	regal	regular	separate	serene	serious	serpentine	several	severe	shabby	shadowy	shady	shallow	shameful	shameless	sharp	shimmering	shiny	shocked	shocking	shoddy	short	shortterm	showy	shrill	shy	sick	silent	silky	tempting	tender	tense	tepid	terrible	terrific	testy	thankful	that	these	uneven	unfinished	unfit	unfolded	unfortunate	unhappy	unhealthy	uniform	unimportant	unique	valuable	vapid	variable	vast	velvety	weak	wealthy	weary	webbed	wee	weekly	weepy	weighty	weird	welcome	welldocumented	yellow	zealous	aggressive	agile	agitated	agonizing	agreeable	ajar	alarmed	alarming	alert	alienated	alive	all	altruistic	blackandwhite	bland	blank	blaring	bleak	blind	blissful	blond	blue	blushing	cloudy	clueless	clumsy	cluttered	coarse	cold	colorful	colorless	colossal	comfortable	common	compassionate	competent	complete	delightful	delirious	demanding	dense	dental	dependable	dependent	descriptive	deserted	detailed	determined	devoted	different	embellished	eminent	emotional	empty	enchanted	enchanting	energetic	enlightened	enormous	filthy	fine	finished	firm	first	firsthand	fitting	fixed	flaky	flamboyant	flashy	flat	flawed	flawless	flickering	gloomy	glorious	glossy	glum	golden	good	goodnatured	gorgeous	graceful	healthy	heartfelt	hearty	heavenly	heavy	hefty	helpful	helpless	impartial	impeccable	imperfect	imperturbable	impish	impolite	important	impossible	impractical	impressionable	impressive	improbable	joint	jolly	jovial	kindhearted	kindly	lighthearted	likable	likely	limited	limp	limping	linear	lined	liquid	medium	meek	mellow	melodic	memorable	menacing	merry	messy	metallic	mild	negative	neglected	negligible	neighboring	nervous	new	oldfashioned	only	open	optimal	optimistic	opulent	plaintive	plastic	playful	pleasant	pleased	pleasing	plump	plush	pointed	pointless	poised	polished	polite	political	queasy	querulous	reliable	relieved	remarkable	remorseful	remote	repentant	required	respectful	responsible	silly	silver	similar	simple	simplistic	sinful	single	sizzling	skeletal	skinny	sleepy	slight	slim	slimy	slippery	slow	slushy	small	smart	smoggy	smooth	smug	snappy	snarling	sneaky	sniveling	snoopy	thick	thin	third	thirsty	this	thorny	thorough	those	thoughtful	threadbare	united	unkempt	unknown	unlawful	unlined	unlucky	unnatural	unpleasant	unrealistic	venerated	vengeful	verifiable	vibrant	vicious	wellgroomed	wellinformed	welllit	wellmade	welloff	welltodo	wellworn	wet	which	whimsical	whirlwind	whispered	yellowish	zesty	amazing	ambitious	ample	amused	amusing	anchored	ancient	angelic	angry	anguished	animated	annual	another	antique	bogus	boiling	bold	bony	boring	bossy	both	bouncy	bountiful	bowed	complex	complicated	composed	concerned	concrete	confused	conscious	considerate	constant	content	conventional	cooked	cool	cooperative	difficult	digital	diligent	dim	dimpled	dimwitted	direct	disastrous	discrete	disfigured	disgusting	disloyal	dismal	enraged	entire	envious	equal	equatorial	essential	esteemed	ethical	euphoric	flimsy	flippant	flowery	fluffy	fluid	flustered	focused	fond	foolhardy	foolish	forceful	forked	formal	forsaken	gracious	grand	grandiose	granular	grateful	grave	gray	great	greedy	green	hidden	hideous	high	highlevel	hilarious	hoarse	hollow	homely	impure	inborn	incomparable	incompatible	incomplete	inconsequential	incredible	indelible	indolent	inexperienced	infamous	infantile	joyful	joyous	jubilant	klutzy	knobby	little	live	lively	livid	loathsome	lone	lonely	long	milky	mindless	miniature	minor	minty	miserable	miserly	misguided	misty	mixed	next	nice	nifty	nimble	nippy	orange	orderly	ordinary	organic	ornate	ornery	poor	popular	portly	posh	positive	possible	potable	powerful	powerless	practical	precious	present	prestigious	questionable	quick	repulsive	revolving	rewarding	rich	right	rigid	ringed	ripe	sociable	soft	soggy	solid	somber	some	sophisticated	sore	sorrowful	soulful	soupy	sour	spanish	sparkling	sparse	specific	spectacular	speedy	spherical	spicy	spiffy	spirited	spiteful	splendid	spotless	spotted	spry	thrifty	thunderous	tidy	tight	timely	tinted	tiny	tired	torn	total	unripe	unruly	unselfish	unsightly	unsteady	unsung	untidy	untimely	untried	victorious	vigilant	vigorous	villainous	violet	white	whole	whopping	wicked	wide	wideeyed	wiggly	wild	willing	wilted	winding	windy	young	zigzag	anxious	any	apprehensive	appropriate	apt	arctic	arid	aromatic	artistic	ashamed	assured	astonishing	athletic	brave	breakable	brief	bright	brilliant	brisk	broken	bronze	brown	bruised	coordinated	corny	corrupt	costly	courageous	courteous	crafty	crazy	creamy	creative	creepy	criminal	crisp	dirty	disguised	dishonest	dismal	distant	distant	distinct	distorted	dizzy	dopey	downright	dreary	even	evergreen	everlasting	every	evil	exalted	excellent	excitable	exemplary	exhausted	forthright	fortunate	fragrant	frail	frank	frayed	free	french	frequent	fresh	friendly	frightened	frightening	frigid	gregarious	grim	grimy	gripping	grizzled	gross	grotesque	grouchy	grounded	honest	honorable	honored	hopeful	horrible	hospitable	hot	huge	infatuated	inferior	infinite	informal	innocent	insecure	insidious	insignificant	insistent	instructive	insubstantial	judicious	juicy	jumbo	knotty	knowing	knowledgeable	longterm	loose	lopsided	lost	loud	lovable	lovely	loving	modern	modest	moist	monstrous	monthly	monumental	moral	mortified	motherly	motionless	nocturnal	noisy	nonstop	normal	notable	noted	original	other	our	outgoing	outlandish	outlying	precious	pretty	previous	pricey	prickly	primary	prime	pristine	private	prize	probable	productive	profitable	quickwitted	quiet	quintessential	roasted	robust	rosy	rotating	rotten	rough	round	rowdy	square	squeaky	squiggly	stable	staid	stained	stale	standard	starchy	stark	starry	steel	steep	sticky	stiff	stimulating	stingy	stormy	straight	strange	strict	strident	striking	striped	strong	studious	stunning	tough	tragic	trained	traumatic	treasured	tremendous	tremendous	triangular	tricky	trifling	trim	untrue	unused	unusual	unwelcome	unwieldy	unwilling	unwitting	unwritten	upbeat	violent	virtual	virtuous	visible	winged	wiry	wise	witty	wobbly	woeful	wonderful	wooden	woozy	wordy	worldly	worn	youthful	attached	attentive	attractive	austere	authentic	authorized	automatic	avaricious	average	aware	awesome	awful	awkward	bubbly	bulky	bumpy	buoyant	burdensome	burly	bustling	busy	buttery	buzzing	critical	crooked	crowded	cruel	crushing	cuddly	cultivated	cultured	cumbersome	curly	curvy	cute	cylindrical	doting	double	downright	drab	drafty	dramatic	dreary	droopy	dry	dual	dull	dutiful	excited	exciting	exotic	expensive	experienced	expert	extralarge	extraneous	extrasmall	extroverted	frilly	frivolous	frizzy	front	frosty	frozen	frugal	fruitful	full	fumbling	functional	funny	fussy	fuzzy	growing	growling	grown	grubby	gruesome	grumpy	guilty	gullible	gummy	humble	humiliating	humming	humongous	hungry	hurtful	husky	intelligent	intent	intentional	interesting	internal	international	intrepid	ironclad	irresponsible	irritating	itchy	jumpy	junior	juvenile	known	kooky	kosher	low	loyal	lucky	lumbering	luminous	lumpy	lustrous	luxurious	mountainous	muddy	muffled	multicolored	mundane	murky	mushy	musty	muted	mysterious	noteworthy	novel	noxious	numb	nutritious	nutty	onerlooked	outrageous	outstanding	oval	overcooked	overdue	overjoyed	profuse	proper	proud	prudent	punctual	pungent	puny	pure	purple	pushy	putrid	puzzled	puzzling	quirky	quixotic	quizzical	royal	rubbery	ruddy	rude	rundown	runny	rural	rusty	stupendous	stupid	sturdy	stylish	subdued	submissive	substantial	subtle	suburban	sudden	sugary	sunny	super	superb	superficial	superior	supportive	surefooted	surprised	suspicious	svelte	sweaty	sweet	sweltering	swift	sympathetic	trivial	troubled	trusting	trustworthy	trusty	truthful	tubby	turbulent	twin	upright	upset	urban	usable	used	useful	useless	utilized	utter	vital	vivacious	vivid	voluminous	worried	worrisome	worse	worst	worthless	worthwhile	worthy	wrathful	wretched	writhing	wrong	wry	yummy	true	aliceblue	antiquewhite	aqua	aquamarine	azure	beige	bisque	black	blanchedalmond	blue	blueviolet	brown	burlywood	cadetblue	chartreuse	chocolate	coral	cornflowerblue	cornsilk	crimson	cyan	darkblue	darkcyan	darkgoldenrod	darkgray	darkgreen	darkgrey	darkkhaki	darkmagenta	darkolivegreen	darkorange	darkorchid	darkred	darksalmon	darkseagreen	darkslateblue	darkslategray	darkslategrey	darkturquoise	darkviolet	deeppink	deepskyblue	dimgray	dimgrey	dodgerblue	firebrick	floralwhite	forestgreen	fractal	fuchsia	gainsboro	ghostwhite	gold	goldenrod	gray	green	greenyellow	honeydew	hotpink	indianred	indigo	ivory	khaki	lavender	lavenderblush	lawngreen	lemonchiffon	lightblue	lightcoral	lightcyan	lightgoldenrod	lightgoldenrodyellow	lightgray	lightgreen	lightgrey	lightpink	lightsalmon	lightseagreen	lightskyblue	lightslateblue	lightslategray	lightsteelblue	lightyellow	lime	limegreen	linen	magenta	maroon	mediumaquamarine	mediumblue	mediumforestgreen	mediumgoldenrod	mediumorchid	mediumpurple	mediumseagreen	mediumslateblue	mediumspringgreen	mediumturquoise	mediumvioletred	midnightblue	mintcream	mistyrose	moccasin	navajowhite	navy	navyblue	oldlace	olive	olivedrab	opaque	orange	orangered	orchid	palegoldenrod	palegreen	paleturquoise	palevioletred	papayawhip	peachpuff	peru	pink	plum	powderblue	purple	red	rosybrown	royalblue	saddlebrown	salmon	sandybrown	seagreen	seashell	sienna	silver	skyblue	slateblue	slategray	slategrey	snow	springgreen	steelblue	tan	teal	thistle	tomato	transparent	turquoise	violet	violetred	wheat	white	whitesmoke	yellow	yellowgreen"          
 ADJECTIVES_LIST = [s.upper() for s in ADJECTIVES_LIST.split('\t')]
-COLORS_LIST = ["sky blue", "green yellow", "coral", "orchid", "DarkOliveGreen2", "plum3", "gray60", "wheat", "pale violet red", "salmon", "sienna", "lavender", "honeydew", "moccasin", "brown1", "green2", "OliveDrab1", "turquoise1", "tan1", "LightCyan2", "SeaGreen1", "PaleGreen2"]
+COLORS_LIST = ["sky blue", "green yellow", "coral", "DarkOliveGreen2", "gray60", "salmon", "sienna", "moccasin", "brown1", "green2", "OliveDrab1", "tan1",]
+# COLORS_LIST = ["black"]
            
 MAX_TERRAIN_WIDGET_WIDTH = 6  # number of terrain widgets to be displayed horizontally before starting a new row
 LABEL_FONT = ("Calibri", 10, "bold")
@@ -52,6 +56,17 @@ settings = deepcopy(default_settings)
 root = tk.Tk()
 output = ""
           
+
+#################################
+#                               #
+#       --- Functions ---       #
+#                               #
+#################################
+
+
+def distance(point0, point1):
+    return math.sqrt((point0[0] - point1[0]) ** 2 + (point0[1] - point1[1]) ** 2)
+          
           
 #################################
 #                               #
@@ -61,7 +76,7 @@ output = ""
 
 
 class TerrainType(object):
-    def __init__(self, image, min_size=0, max_size=0, max_objects=None, name=None, color=None):
+    def __init__(self, image, min_size=0, max_size=0, max_objects=None, name=None, color=None, liquid=False):
         self.image = image  # e.g. 'STONE_IMAGE' or 'PINE_IMAGE'
         # self._min_size = min_size
         # self._max_size = max_size        
@@ -70,6 +85,7 @@ class TerrainType(object):
         self.max_objects = max_objects
         self.name = name if name is not None else random.choice(ADJECTIVES_LIST) + " " + random.choice(ANIMALS_LIST)
         self.color = color if color is not None else random.choice(COLORS_LIST)
+        self.liquid = liquid
        
 
     # don't actually want to do this -- don't want to arbitrarily decide the order in which min_size and max_size are
@@ -173,9 +189,9 @@ class BattleMap(object):
         
     def redraw(self):
         """Remove everything and add it back in the order in self._terrain_objects."""
-        self._rows = [[None for i in range(height)] for j in range(width)]
-        terrain_objects = self._terrain_objects
-        self._terrain_objects = None
+        self._rows = [[None for i in range(self._height)] for j in range(self._width)]
+        terrain_objects = self._terrain_objects.copy()
+        self._terrain_objects = []
         
         for t_o in terrain_objects:
             self.add(t_o)     
@@ -184,9 +200,11 @@ class BattleMap(object):
     def delete(self, x, y):
         """Remove and return the TerrainObject at (x,y). Calls redraw to update the map's 2D representation."""
         terrain_object = self.get(x, y)
-        self._terrain_objects.remove(terrain_object)
-        self.redraw()
-        return terrain_object
+        if terrain_object in self._terrain_objects:
+            self._terrain_objects.remove(terrain_object)
+            self.redraw()
+            return terrain_object
+        return None
     
 
     def ensure_playable(self, empty_terrain_types=None):
@@ -200,120 +218,158 @@ class BattleMap(object):
                                         todo: actually implement empty_terrain_types stuff
         """
         empty_terrain_types = (None,) if empty_terrain_types is None else empty_terrain_types
-        
-        
-        class UndirectedGraph(object):
-            """Undirected graph data structure, mostly a copy of a great SO answer here:
-            http://stackoverflow.com/questions/19472530/representing-graphs-data-structure-in-python
-            """
-            
-            
-            def __init__(self, connections):
-                self._graph = defaultdict(set)
-                
-                
-            def add_connections(self, connections):
-                """Add connections (list of tuple pairs) to the graph."""
-                for node1, node2 in connections:
-                    self.add(node1, node2)
-                    
-                    
-            def add(self, node1, node2):
-                """Add a connection between node1 and node2."""
-                self._graph[node1].add(node2)
-                self._graph[node2].add(node1)
-                
-                
-            def remove(self, node):
-                """Remove all references to node."""
-                for n, cxns in self._graph.iteritems():
-                    try:
-                        cxns.remove(node)
-                    except KeyError:
-                        pass
-                
-                try:
-                    del self._graph[node]
-                except KeyError:
-                    pass
-                    
-                    
-            def is_connected(self, node1, node):
-                """Is node1 directly connected to node2"""
-                return node1 in self._graph and node2 in self._graph[node1]
-                
-                
-            def find_path(self, node1, node2, path=[]):
-                """Find ANY path between node1 and node2 (may not be shortest)"""
-                path = path + [node1]
-                if node1 == node2:
-                    return path
-                    
-                if node1 not in self._graph:
-                    return None
-                    
-                for node in self._graph[node1]:
-                    if node not in path:
-                        new_path = self.find_path(node, node2, path)
-                        if new_path:
-                            return new_path
-                return None
-        
-        
-        # Find regions -----------------------------------------------
-        labeled_map = [[0 for y in range(self._height)] for x in range(self._width)]
 
-        for x in range(self._width):
-            for y in range(self._height):
-                if self.get(x,y) not in empty_terrain_types:
-                    labeled_map[x][y] = 0
-                else:
-                    labeled_map[x][y] = 1
-                    
-        equivalences = defaultdict(set)
-        labelcount = 1
         
-        #first pass
-        for y in range(self._height):
+        def get_labeled_map(self):
+            # Find regions -----------------------------------------------
+            labeled_map = [[0 for y in range(self._height)] for x in range(self._width)]
+
             for x in range(self._width):
-                left = 0
-                up = 0
-                
-                if labeled_map[x][y] == 0:
-                    continue
-                    
-                if x - 1 >= 0:
-                    left = labeled_map[x-1][y]
-                if y - 1 >= 0:
-                    up = labeled_map[x][y-1]
-                    
-                if left == up == 0:  # neighbors aren't labeled, so we make a new label and assign it to ourself
-                    labelcount += 1
-                    labeled_map[x][y] = labelcount
-                else:
-                    if left > 0 and up > 0:  # then our neighbors are connected, so we assign ourself one of their regions and make a note of their regions' equivalence
-                        labeled_map[x][y] = min(left, up)
-                        if left != up:
-                            equivalences[max(left,up)].add(min(left,up))
-                    elif left > 0:
-                        labeled_map[x][y] = left
+                for y in range(self._height):
+                    if self.get(x,y) not in empty_terrain_types:
+                        labeled_map[x][y] = 0
                     else:
-                        labeled_map[x][y] = up
-                    
-
+                        labeled_map[x][y] = 1
                         
-                
-        for y in range(self._height):
-            outstr = []
-            for x in range(self._width):
-                outstr += str(labeled_map[x][y])
-            outstr = ' '.join(["%2s" % i for i in outstr])
-            print(outstr)
+            equivalences = defaultdict(set)
+            labelcount = 1
             
-        print()
-        for k,v in equivalences.items():
-            print(str(k) + "\t" + str(v))
+                #first pass - identify regions and find out which ones are equivalent
+            for y in range(self._height):
+                for x in range(self._width):
+                    left = 0
+                    up = 0
+                    
+                    if labeled_map[x][y] == 0:
+                        continue
+                        
+                    if x - 1 >= 0:
+                        left = labeled_map[x-1][y]
+                    if y - 1 >= 0:
+                        up = labeled_map[x][y-1]
+                        
+                    if left == up == 0:  # neighbors aren't labeled, so we make a new label and assign it to ourself
+                        labelcount += 1
+                        labeled_map[x][y] = labelcount
+                    else:
+                        if left > 0 and up > 0:  # then our neighbors are connected, so we assign ourself one of their regions and make a note of their regions' equivalence
+                            labeled_map[x][y] = min(left, up)
+                            if left != up:
+                                equivalences[max(left,up)].add(min(left,up))
+                        elif left > 0:
+                            labeled_map[x][y] = left
+                        else:
+                            labeled_map[x][y] = up
+
                 
+            for y in range(self._height):
+                outli = []
+                for x in range(self._width):
+                    outli.append(labeled_map[x][y])
+                print(' '.join(["%2s" % i for i in outli]))
+                
+            print()
+            for k,v in equivalences.items():
+                print(str(k) + "\t" + str(v))
+
+                            
+                # second pass - relabel equivalent regions, iterating through higher->lower, reducing labels along the way
+                #   I made this up, probably terribly inefficient compared to standard method. todo: look it up later
+            for label in range(labelcount, 1, -1):
+                if equivalences[label] == set():
+                    continue
+                max_label = max(equivalences[label])  # find the largest label this label is equivalent to
+                equivalences[max_label] = equivalences[max_label] | equivalences[label] - {max_label}  # add all the elements in this label to the equivalences of the next largest equivalent label (except itself)
+                
+                for y in range(self._height):
+                    for x in range(self._width):
+                        if labeled_map[x][y] == label:
+                            labeled_map[x][y] = max_label
+                            
+                del equivalences[label]                       
+                    
+            for y in range(self._height):
+                outli = []
+                for x in range(self._width):
+                    outli.append(labeled_map[x][y])
+                print(' '.join(["%2s" % i for i in outli]))
+                
+            print()
+            for k,v in equivalences.items():
+                print(str(k) + "\t" + str(v))
+                
+            return labeled_map
+        
+        regions_grid = get_labeled_map(self)
+        
+        regions_count = 0
+        regions_dict = defaultdict(list)
+        for y in range(self._height):
+            for x in range(self._width):
+                regions_dict[regions_grid[x][y]].append((x, y))
+                
+                
+        # pick two regions A and B, remove them from the dictionary
+        non_empty_regions = regions_dict.pop(0)  # don't need this now, may want it for later stuff
+        while len(regions_dict) > 1:
+            label1, region1 = regions_dict.popitem()
+            label2, region2 = regions_dict.popitem()
+            
+            # find the two closest points between those regions
+            closest = [(0, 0), (float('inf'), float('inf'))]  # (x1, y1), (x2, y2)
+            
+            for point1 in region1:
+                for point2 in region2:
+                    if distance(point1, point2) < distance(closest[0], closest[1]):
+                        closest = [point1, point2]
+            point1, point2 = closest[0], closest[1]
+            
+            # delete whatever is in the way, add those points to A            
+            stepx = 1 if point1[0] <= point2[0] else -1
+            stepy = 1 if point1[1] <= point2[1] else -1
+            
+            if random.randint(0,1) == 1:  # adds more variety if we don't always start the path the same way
+                while point1[0] != point2[0]:  # todo: can add some more complex functionality like filling in deleted tiles with other empty tiles here, and use a less destructive algorithm that rechecks regions each time
+                    self.delete(point1[0], point1[1])
+                    region1.append(point1)  # will make some duplicates on the first go; oh well. todo: fix
+                    point1 = (point1[0] + stepx, point1[1])
+                    
+                    print(point1)
+                    print(point2)
+                while point1[1] != point2[1]:
+                    self.delete(point1[0], point1[1])
+                    region1.append(point1)
+                    point1 = (point1[0], point1[1] + stepy)
+                    
+                    print(point1)
+                    print(point2)
+            else:
+                while point1[1] != point2[1]:
+                    self.delete(point1[0], point1[1])
+                    region1.append(point1)
+                    point1 = (point1[0], point1[1] + stepy)
+                    
+                    
+                    print(point1)
+                    print(point2)
+                while point1[0] != point2[0]:
+                    self.delete(point1[0], point1[1])
+                    region1.append(point1)
+                    point1 = (point1[0] + stepx, point1[1])
+                    
+                    print(point1)
+                    print(point2)
+
+
+            # add the points of B to A and put them back
+            regions_dict[label1] = region1 + region2
+            
+
+        # for k,v in regions_dict.items():
+            # print(str(k) + "\t")
+            # for i in v:
+                # print(str(i))
+            # print("\n\n\n")
         
         # Create region graph ----------------------------------------
         # If two blank regions are not connected, connect them -------
@@ -426,7 +482,7 @@ class TerrainWindow(tk.Frame):
         self.max_objects_frame = tk.Frame(self.buttons_frame)
         self.max_objects_label = tk.Label(self.max_objects_frame, text="Max Objects", font=LABEL_FONT)
         self.max_objects_scale = tk.Scale(self.max_objects_frame, from_=1, 
-                                          to=settings["map_width"] * settings["map_height"] // 4, resolution=1, 
+                                          to=settings["map_width"] * settings["map_height"] // 1, resolution=1, 
                                           orient=tk.HORIZONTAL)
         self.max_objects_label.pack(side="top")
         self.max_objects_scale.pack(side="top")
@@ -484,11 +540,7 @@ class TerrainWindow(tk.Frame):
         self.outtxt.config(state=tk.DISABLED)
         
         
-#################################
-#                               #
-#       --- Functions ---       #
-#                               #
-#################################
+
    
 
 #################################
