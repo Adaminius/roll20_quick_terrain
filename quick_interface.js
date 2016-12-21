@@ -1,3 +1,21 @@
+/*
+roll20TerrainGen - Simple GUI terrain generation appropriate for outdoor battle maps for use in tabletop roleplaying games.
+Copyright (C) 2016 Adam Mansfield
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 /******************** IMAGES ********************/
 var STONE_IMAGE = 'https://s3.amazonaws.com/files.d20.io/images/26401727/u-v0Ngg7BhDGv0GS5zvuPw/thumb.png?1482011449';
 var PINE_IMAGE = 'https://s3.amazonaws.com/files.d20.io/images/26401729/j4FpvNNVnv3aJ4Ky3DdZ1A/thumb.png?1482011451';
