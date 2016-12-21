@@ -508,12 +508,20 @@ class TerrainWindow(tk.Frame):
             t_w.terrain_type.max_objects = t_w.max_objects_scale.get()
             
         
-    def generate_terrain(self):  # probably want to move actual terrain generation code somewhere else...some day
+    def generate_terrain(self):  # probably want to move actual terrain generation code somewhere else... todo: some day
         self.update_terrain_types()
     
         bmap = BattleMap(settings["map_width"], settings["map_height"])
-        for i in range(self.max_objects_scale.get()):  # just for testing -- sophisticated terrain gen is next goal
+        type_count = defaultdict(int)  # track number of objects of each type
+        for i in range(self.max_objects_scale.get()): 
             ttype = random.choice(self.terrain_types)
+            
+            for i in range(1000):  # try 1000 times, then give up trying to find a terrain that isn't maxed out
+                if type_count[ttype] < ttype.max_objects:
+                    break
+                ttype = random.choice(self.terrain_types)
+            type_count[ttype] += 1
+                
             size = random.randrange(ttype.min_size, ttype.max_size + 1, 1)
             locx = random.randrange(0, settings["map_width"], 1)
             locy = random.randrange(0, settings["map_height"], 1)
@@ -539,9 +547,6 @@ class TerrainWindow(tk.Frame):
         self.outtxt.insert(tk.END, bmap.get_out_str())
         self.outtxt.config(state=tk.DISABLED)
         
-        
-
-   
 
 #################################
 #                               #
